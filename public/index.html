@@ -1326,4 +1326,297 @@
         // Filter history by current user
         const userId = localStorage.getItem('userId');
         if (userId) {
-            history = history.
+            history = history.filter(item => item.userId === userId);
+        }
+        
+        if (history.length === 0) {
+            historyList.innerHTML = `
+                <div class="history-placeholder">
+                    <i class="fas fa-clock-rotate-left"></i>
+                    <p>No share history yet</p>
+                </div>
+            `;
+            return;
+        }
+        
+        historyList.innerHTML = '';
+        
+        history.forEach(item => {
+            const historyItem = document.createElement('div');
+            historyItem.className = 'history-item';
+            historyItem.innerHTML = `
+                <div class="history-header">
+                    <span class="history-id">${item.id}</span>
+                    <span class="history-date">${formatDate(item.date)}</span>
+                </div>
+                <div class="history-url">${item.url}</div>
+                <div class="history-stats">
+                    <span>Target: ${item.target} shares</span>
+                    <span class="history-completed">Completed: ${item.completed}</span>
+                </div>
+            `;
+            historyList.appendChild(historyItem);
+        });
+    }
+    
+    // Format date
+    function formatDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleString();
+    }
+    
+    // Load processing data
+    async function loadProcessing() {
+        try {
+            const container = document.getElementById('processing');
+            const processContainer = document.getElementById('process-container');
+            const activeCount = document.getElementById('active-count');
+            const statsElement = document.getElementById('stats');
+            
+            const response = await fetch('/total');
+        
+            if (!response.ok) {
+                throw new Error(`Failed to fetch: ${response.status} - ${response.statusText}`);
+            }
+        
+            const data = await response.json();
+            if (data.length === 0) {
+                processContainer.style.display = 'none';
+                return;
+            }
+            
+            processContainer.style.display = 'block';
+            container.innerHTML = '';
+            
+            let totalCompleted = 0;
+            let totalTarget = 0;
+            
+            data.forEach((item, index) => {
+                const progress = Math.min(100, (item.count / item.target) * 100);
+                totalCompleted += item.count;
+                totalTarget += item.target;
+                
+                const processItem = document.createElement('div');
+                processItem.className = 'process-item';
+                processItem.innerHTML = `
+                    <div class="process-info">
+                        <span class="process-id">ID: ${item.id}</span>
+                        <span class="process-time">Started: ${formatDate(item.date)}</span>
+                    </div>
+                    <div class="process-url">${item.url}</div>
+                    <div class="process-progress">
+                        <span class="progress-text">${item.count}/${item.target}</span>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${progress}%"></div>
+                        </div>
+                    </div>
+                    <div class="process-actions">
+                        <button class="process-btn stop"><i class="fas fa-stop"></i> Stop</button>
+                        <button class="process-btn"><i class="fas fa-info-circle"></i> Details</button>
+                    </div>
+                `;
+                container.appendChild(processItem);
+            });
+            
+            activeCount.textContent = `${data.length} Active`;
+            statsElement.textContent = `${totalCompleted}/${totalTarget} Shares Completed`;
+            
+        } catch (error) {
+            console.error(error);
+        }
+    }
+    
+    // Toggle input fields based on checkbox state
+    function toggleInputField(checkboxId, inputId) {
+        const checkbox = document.getElementById(checkboxId);
+        const input = document.getElementById(inputId);
+        
+        function updateInputState() {
+            input.disabled = !checkbox.checked;
+            input.required = checkbox.checked;
+        }
+        
+        checkbox.addEventListener('change', updateInputState);
+        updateInputState(); // Initialize state
+    }
+    
+    // New JavaScript for added features
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize processing and history
+        loadProcessing();
+        
+        // Set up checkbox toggles
+        toggleInputField('enable-link', 'urls');
+        toggleInputField('enable-limit', 'amounts');
+        toggleInputField('enable-delay', 'intervals');
+        
+        // Theme toggle
+        const themeToggle = document.querySelector('.theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        let currentTheme = localStorage.getItem('theme') || 'dark';
+        
+        document.documentElement.setAttribute('data-theme', currentTheme);
+        
+        if (currentTheme === 'light') {
+            themeIcon.classList.remove('fa-moon');
+            themeIcon.classList.add('fa-sun');
+        }
+        
+        themeToggle.addEventListener('click', function() {
+            if (currentTheme === 'dark') {
+                currentTheme = 'light';
+                themeIcon.classList.remove('fa-moon');
+                themeIcon.classList.add('fa-sun');
+            } else {
+                currentTheme = 'dark';
+                themeIcon.classList.remove('fa-sun');
+                themeIcon.classList.add('fa-moon');
+            }
+            document.documentElement.setAttribute('data-theme', currentTheme);
+            localStorage.setItem('theme', currentTheme);
+        });
+        
+        // Date and time
+        function updateDateTime() {
+            const now = new Date();
+            const options = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            };
+            document.getElementById('datetime').textContent = now.toLocaleDateString('en-US', options);
+        }
+        
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
+        
+        // Menu toggle
+        const menuIcon = document.getElementById('menu-icon');
+        const sideMenu = document.getElementById('side-menu');
+        const closeMenu = document.getElementById('close-menu');
+        
+        menuIcon.addEventListener('click', function() {
+            sideMenu.classList.add('active');
+        });
+        
+        closeMenu.addEventListener('click', function() {
+            sideMenu.classList.remove('active');
+        });
+        
+        // Contact Admin Modal
+        const contactBtn = document.getElementById('contact-admin');
+        const contactModal = document.getElementById('contact-modal');
+        const closeContactModal = contactModal.querySelector('.close-modal');
+        
+        contactBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            contactModal.classList.add('active');
+            sideMenu.classList.remove('active');
+        });
+        
+        closeContactModal.addEventListener('click', function() {
+            contactModal.classList.remove('active');
+        });
+        
+        // Password protection for history
+        const showHistoryBtn = document.getElementById('show-history');
+        const passwordModal = document.getElementById('password-modal');
+        const submitPasswordBtn = document.getElementById('submit-password');
+        const passwordError = document.getElementById('password-error');
+        const historyContainer = document.getElementById('history-container');
+        const closePasswordModal = passwordModal.querySelector('.close-modal');
+        
+        showHistoryBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            passwordModal.classList.add('active');
+            sideMenu.classList.remove('active');
+            document.getElementById('history-password').value = '';
+            passwordError.style.display = 'none';
+        });
+        
+        closePasswordModal.addEventListener('click', function() {
+            passwordModal.classList.remove('active');
+        });
+        
+        submitPasswordBtn.addEventListener('click', function() {
+            const password = document.getElementById('history-password').value;
+            if (password === 'brysonboost') {
+                passwordModal.classList.remove('active');
+                historyContainer.style.display = 'block';
+                // Scroll to history section
+                historyContainer.scrollIntoView({ behavior: 'smooth' });
+                renderHistory();
+            } else {
+                passwordError.style.display = 'block';
+            }
+        });
+        
+        // Allow pressing Enter in password field
+        document.getElementById('history-password').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                submitPasswordBtn.click();
+            }
+        });
+        
+        // Close modals when clicking outside
+        window.addEventListener('click', function(e) {
+            if (e.target === contactModal) {
+                contactModal.classList.remove('active');
+            }
+            if (e.target === passwordModal) {
+                passwordModal.classList.remove('active');
+            }
+        });
+        
+        // Contact form submission
+        const contactForm = document.querySelector('.contact-form');
+        if (contactForm) {
+            contactForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                alert('Message sent successfully! Our admin will contact you soon.');
+                contactModal.classList.remove('active');
+                contactForm.reset();
+            });
+        }
+        
+        // Refresh history button
+        document.getElementById('refresh-history').addEventListener('click', function(e) {
+            e.preventDefault();
+            renderHistory();
+            loadProcessing();
+        });
+        
+        // Clear history button
+        document.getElementById('clear-history').addEventListener('click', function(e) {
+            e.preventDefault();
+            if (confirm('Are you sure you want to clear all history?')) {
+                const userId = localStorage.getItem('userId');
+                let history = JSON.parse(localStorage.getItem('shareHistory')) || [];
+                
+                // Only clear history for current user
+                history = history.filter(item => item.userId !== userId);
+                localStorage.setItem('shareHistory', JSON.stringify(history));
+                
+                renderHistory();
+            }
+        });
+        
+        // Auto-refresh processing every 10 seconds
+        setInterval(loadProcessing, 10000);
+
+        // Welcome section - Start Boosting button
+        document.getElementById('start-boosting').addEventListener('click', function() {
+            document.getElementById('welcome-section').style.display = 'none';
+            document.getElementById('main-content').style.display = 'block';
+            window.scrollTo(0, 0);
+        });
+    });
+</script>
+</body>
+</html>
+    
